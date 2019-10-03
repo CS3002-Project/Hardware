@@ -1,7 +1,7 @@
 #include <Wire.h>
-#define HAND 2    // Sets Digital 2 pin as hand sensor
+#define HAND 4    // Sets Digital 4 pin as hand sensor
 #define FOREARM 3 // Sets Digital 3 pin as forearm sensor
-#define BACK 4    // Sets Digital 4 pin as back sensor
+#define BACK 2    // Sets Digital 2 pin as back sensor
 
 const int MPU = 0x68; // MPU6050 I2C addresses
 
