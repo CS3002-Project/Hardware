@@ -81,35 +81,17 @@ void DeactivateSensors() {
   digitalWrite(BACK, HIGH);     // Deactivates back sensor
 }
 
-void ExecuteHandSensor() {
+void ExecuteSensor(int value, SensorDataStructure sds) {
   DeactivateSensors();
-  digitalWrite(HAND, LOW);  // Activates hand sensor
-  delay(50);
+  digitalWrite(value, LOW);  // Activates sensor
+  delay(100);
   ReadMPUValues();
   UpdateMPUSensorData();
-  PrintMPUValues(HandSensorData);
-}
-
-void ExecuteForearmSensor() {
-  DeactivateSensors();
-  digitalWrite(FOREARM, LOW); // Activates forearm sensor
-  delay(50);
-  ReadMPUValues();
-  UpdateMPUSensorData();
-  PrintMPUValues(ForearmSensorData);
-}
-
-void ExecuteBackSensor() {
-  DeactivateSensors();
-  digitalWrite(BACK, LOW);  // Activates back sensor
-  delay(50);
-  ReadMPUValues();
-  UpdateMPUSensorData();
-  PrintMPUValues(BackSensorData);
+  PrintMPUValues(sds);
 }
 
 void loop() {
-  ExecuteHandSensor();
-  ExecuteForearmSensor();
-  ExecuteBackSensor();
+  ExecuteSensor(HAND, HandSensorData);
+  ExecuteSensor(FOREARM, ForearmSensorData);
+  ExecuteSensor(BACK, BackSensorData);
 }
