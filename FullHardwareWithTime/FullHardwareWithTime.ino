@@ -2,7 +2,7 @@
 #define HAND 4        // Sets Digital 4 pin as hand sensor
 #define FOREARM 3     // Sets Digital 3 pin as forearm sensor
 #define BACK 2        // Sets Digital 2 pin as back sensor
-#define RS 0.1         // Shunt resistor value
+#define RS 0.1        // Shunt resistor value
 #define RL 10000      // Load resistor value
 #define REFVOLTAGE 5  // Reference Voltage for Analog Read
 #define RINA169 1000  // Resistor Multiplier due to Internal of Sensor
@@ -13,14 +13,13 @@ const int VoltagePort = A1; // Input pin for measuring voltage divider
 
 float rawCurrentReading;    // Variable to store value from analog read
 float scaledCurrentReading; // Variable to store the scaled value from the analog value
+float voltageReading, voltage, seconds;
+
 float current;
 
-float voltageReading, scaledVoltage, voltage;
+unsigned long energy, prevTime, currTime;
 
-unsigned long energy, timeValue, prevTime, currTime;
-float energyValue, power, seconds;
-
-int i = 0;
+int counter = 0;
 
 struct SensorDataStructure {
   float AccX;  // Accelerometer x-axis value for MPU6050
@@ -30,6 +29,13 @@ struct SensorDataStructure {
   float GyroY; // Gyrometer y-axis value for MPU6050
   float GyroZ; // Gyrometer z-axis value for MPU6050
 } HandSensorData, ForearmSensorData, BackSensorData, SensorData;
+
+struct PowerDataStructure {
+  float Current;
+  float Voltage;
+  float Energy;
+  float Power;
+} PowerData;
 
 void setup() {
   pinMode(HAND, OUTPUT);        // Sets hand digital pin as output pin
@@ -52,7 +58,7 @@ void setup() {
   Wire.write(0x00);             // Set Gyroscope Range
   Wire.endTransmission(true);   // Communication done
 
-  Serial.begin(115200);           // Initialize serial port baud rate to 115200
+  Serial.begin(115200);         // Initialize serial port baud rate to 115200
 
   Serial.println("Begin Dancing");
   delay(1000);
@@ -74,22 +80,6 @@ void ReadMPUValues() {
   SensorData.GyroZ = Wire.read() << 8 | Wire.read(); // Reads in raw z-axis gyroscope data
 }
 
-void PrintMPUValues(SensorDataStructure SDS) {
-  Serial.print("Accelerometer Values: [x = "); Serial.print(SDS.AccX);
-  Serial.print(", y = "); Serial.print( SDS.AccY);
-  Serial.print(", z = "); Serial.print(SDS.AccZ); Serial.println("]");
-  Serial.print("Gyrorometer Values:   [x = "); Serial.print(SDS.GyroX);
-  Serial.print(", y = "); Serial.print(SDS.GyroY);
-  Serial.print(", z = "); Serial.print(SDS.GyroZ); Serial.println("]");
-  Serial.println();
-}
-
-void PrintValues(SensorDataStructure SDS) {
-  Serial.print(" "); Serial.print(SDS.AccX); Serial.print(" "); Serial.print(SDS.AccY); Serial.print(" "); Serial.print(SDS.AccZ);
-  Serial.print(" "); Serial.print(SDS.GyroX); Serial.print(" "); Serial.print(SDS.GyroY); Serial.print(" "); Serial.print(SDS.GyroZ);
-  Serial.print(" "); Serial.println();
-}
-
 void CallibrateMPUValues() {
   SensorData.AccX = SensorData.AccX / 16384.0;
   SensorData.AccY = SensorData.AccY / 16384.0;
@@ -103,13 +93,13 @@ void UpdateMPUSensorData() {
   CallibrateMPUValues();
   if (!digitalRead(HAND)) {
     HandSensorData = SensorData;
-    Serial.print("Hand:");
+    //Serial.print("Hand:");
   } else if (!digitalRead(FOREARM)) {
     ForearmSensorData = SensorData;
-    Serial.print("Forearm:");
+    //Serial.print("Forearm:");
   } else if (!digitalRead(BACK)) {
     BackSensorData = SensorData;
-    Serial.print("Back:");
+    //Serial.print("Back:");
   }
 }
 
@@ -124,45 +114,79 @@ void ExecuteSensor(int value, SensorDataStructure sds) {
   digitalWrite(value, LOW);  // Activates sensor
   ReadMPUValues();
   UpdateMPUSensorData();
-  //PrintMPUValues(sds);
-  PrintValues(sds);
+  //PrintFormattedMPUValues(sds);
+  PrintMPUValues(sds);
 }
 
-void CalculatePower() {
-  scaledVoltage = current = energyValue = power = 2.0;
-  prevTime = currTime = millis();
-
-  rawCurrentReading = analogRead(CurrentPort);   // Read sensor value from INA169
-
-  // Scale the value to supply voltage that is 5V
-  scaledCurrentReading = (rawCurrentReading * REFVOLTAGE) / 1023; //send
-
-  // Is = (Vout x 1k) / (RS x RL)
-  current = (scaledCurrentReading) / (RS * 10);
-
-  voltageReading = analogRead(VoltagePort);
-  scaledVoltage = (voltageReading * 5.0 * 2) / 1023;
-  
-  power = scaledVoltage * scaledCurrentReading;
-  
-  energyValue += (current * scaledVoltage *  (currTime - prevTime) / 1000) / 3600;
-  Serial.print("Current: "); Serial.print(current, 9); Serial.print(" A, ");
-  Serial.print("Voltage: "); Serial.print(scaledVoltage, 3); Serial.print(" V, ");
-  Serial.print("Energy: "); Serial.print(energyValue, 3); Serial.print(" Wh, ");
-  Serial.print("Power: "); Serial.print(power, 3); Serial.println(" W");
-}
-
-
-void loop() {
-  Serial.print(i++);
-  Serial.print(" ");
-  seconds = currTime/1000.0;
-  Serial.println(seconds, 3);
-  CalculatePower();
+void ExecuteAllSensors() {
   ExecuteSensor(HAND, HandSensorData);
   ExecuteSensor(FOREARM, ForearmSensorData);
   ExecuteSensor(BACK, BackSensorData);
+}
+
+void PrintFormattedMPUValues(SensorDataStructure SDS) {
+  Serial.print("Accelerometer Values: [x = "); Serial.print(SDS.AccX);
+  Serial.print(", y = "); Serial.print( SDS.AccY);
+  Serial.print(", z = "); Serial.print(SDS.AccZ); Serial.println("]");
+  Serial.print("Gyrorometer Values:   [x = "); Serial.print(SDS.GyroX);
+  Serial.print(", y = "); Serial.print(SDS.GyroY);
+  Serial.print(", z = "); Serial.print(SDS.GyroZ); Serial.println("]");
+  Serial.println();
+}
+
+void PrintMPUValues(SensorDataStructure SDS) {
+  Serial.print(" "); Serial.print(SDS.AccX); Serial.print(" "); Serial.print(SDS.AccY); Serial.print(" "); Serial.print(SDS.AccZ);
+  Serial.print(" "); Serial.print(SDS.GyroX); Serial.print(" "); Serial.print(SDS.GyroY); Serial.print(" "); Serial.print(SDS.GyroZ);
+  Serial.print(" ");
+}
+
+void ReadCurrent() {
+  rawCurrentReading = analogRead(CurrentPort);   // Read sensor value from INA169
+  scaledCurrentReading = (rawCurrentReading * REFVOLTAGE) / 1023; // Scale the value to supply voltage that is 5V
+  PowerData.Current = (scaledCurrentReading) / (RS * 10); // Is = (Vout x 1k) / (RS x RL)
+}
+
+void ReadVoltage() {
+  voltageReading = analogRead(VoltagePort);
+  PowerData.Voltage = (voltageReading * 5.0 * 2) / 1023;
+}
+
+void ReadPower() {
+  PowerData.Power = PowerData.Voltage * scaledCurrentReading;
+}
+
+void ReadEnergy() {
+  currTime = millis();
+  PowerData.Energy += (PowerData.Current * PowerData.Voltage *  (currTime - prevTime) / 1000) / 3600;
+  prevTime = currTime;
+}
+
+void CalculatePowerData() {
+  ReadCurrent();
+  ReadVoltage();
+  ReadPower();
+  ReadEnergy();
+  //PrintPowerValues(PowerData);
+}
+
+void PrintPowerValues(PowerDataStructure PDS) {
+  Serial.print("Current: "); Serial.print(PDS.Current, 9); Serial.print(" A, ");
+  Serial.print("Voltage: "); Serial.print(PDS.Voltage, 3); Serial.print(" V, ");
+  Serial.print("Energy: "); Serial.print(PDS.Energy, 3); Serial.print(" Wh, ");
+  Serial.print("Power: "); Serial.print(PDS.Power, 3); Serial.println(" W");
+}
+
+void PrintCounterAndTime() {
+  Serial.print(counter++);
+  Serial.print(" ");
+  seconds = currTime / 1000.0;
+  Serial.print(seconds, 3);
+}
+
+void loop() {
+  PrintCounterAndTime();
+  CalculatePowerData();
+  ExecuteAllSensors();
   Serial.println();
   delay(4);
-  //delay(500);
 }
