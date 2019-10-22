@@ -69,7 +69,7 @@ void ReadMPUValues() {
   Wire.beginTransmission(MPU);      // Begins communication with the MPU
   Wire.write(0x3B);                 // Register 0x3B upper 8 bits of x-axis acceleration data
   Wire.endTransmission(false);      // End communication
-  Wire.requestFrom(MPU, 12, true);  // Request 12 registers
+  Wire.requestFrom(MPU, 14, true);  // Request 14 registers
 
   SensorData.AccX  = Wire.read() << 8 | Wire.read(); // Reads in raw x-axis acceleration data
   SensorData.AccY  = Wire.read() << 8 | Wire.read(); // Reads in raw y-axis acceleration data
