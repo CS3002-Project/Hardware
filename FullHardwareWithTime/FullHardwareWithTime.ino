@@ -1,18 +1,18 @@
 #include <Wire.h>
-#define HAND 4        // Sets Digital 4 pin as hand sensor
-#define FOREARM 3     // Sets Digital 3 pin as forearm sensor
-#define BACK 2        // Sets Digital 2 pin as back sensor
-#define RS 0.1        // Shunt resistor value
-#define RL 10000      // Load resistor value
-#define REFVOLTAGE 5  // Reference Voltage for Analog Read
-#define RINA169 1000  // Resistor Multiplier due to Internal of Sensor
+#define HAND 4                // Sets Digital 4 pin as hand sensor
+#define FOREARM 3             // Sets Digital 3 pin as forearm sensor
+#define BACK 2                // Sets Digital 2 pin as back sensor
+#define RS 0.1                // Shunt resistor value
+#define RL 10000              // Load resistor value
+#define REFVOLTAGE 5          // Reference Voltage for Analog Read
+#define RINA169 1000          // Resistor Multiplier due to Internal of Sensor
 
-const int MPU = 0x68;       // MPU6050 I2C addresses
-const int CurrentPort = A0; // Input pin for measuring Vout
-const int VoltagePort = A1; // Input pin for measuring voltage divider
+const int MPU = 0x68;         // MPU6050 I2C addresses
+const int CurrentPort = A14;  // Analog 14 input pin for measuring Vout
+const int VoltagePort = A15;  // Analog 15 input pin for measuring voltage divider
 
-float rawCurrentReading;    // Variable to store value from analog read
-float scaledCurrentReading; // Variable to store the scaled value from the analog value
+float rawCurrentReading;      // Variable to store value from analog read
+float scaledCurrentReading;   // Variable to store the scaled value from the analog value
 float voltageReading, voltage, seconds;
 
 float current;
@@ -22,19 +22,19 @@ unsigned long energy, prevTime, currTime;
 int counter = 0;
 
 struct SensorDataStructure {
-  float AccX;  // Accelerometer x-axis value for MPU6050
-  float AccY;  // Accelerometer y-axis value for MPU6050
-  float AccZ;  // Accelerometer z-axis value for MPU6050
-  float GyroX; // Gyrometer x-axis value for MPU6050
-  float GyroY; // Gyrometer y-axis value for MPU6050
-  float GyroZ; // Gyrometer z-axis value for MPU6050
+  float AccX;     // Accelerometer x-axis value for MPU6050
+  float AccY;     // Accelerometer y-axis value for MPU6050
+  float AccZ;     // Accelerometer z-axis value for MPU6050
+  float GyroX;    // Gyrometer x-axis value for MPU6050
+  float GyroY;    // Gyrometer y-axis value for MPU6050
+  float GyroZ;    // Gyrometer z-axis value for MPU6050
 } HandSensorData, ForearmSensorData, BackSensorData, SensorData;
 
 struct PowerDataStructure {
-  float Current;
-  float Voltage;
-  float Energy;
-  float Power;
+  float Current;  // Current value for system
+  float Voltage;  // Voltage value for system
+  float Energy;   // Energy value for system
+  float Power;    // Power value for system
 } PowerData;
 
 void setup() {
@@ -60,9 +60,9 @@ void setup() {
 
   Serial.begin(115200);         // Initialize serial port baud rate to 115200
 
-  Serial.println("Begin Dancing");
-  delay(1000);
-  Serial.println("Now");
+  //  Serial.println("Begin Dancing");
+  //  delay(1000);
+  //  Serial.println("Now");
 }
 
 void ReadMPUValues() {
@@ -81,25 +81,25 @@ void ReadMPUValues() {
 }
 
 void CallibrateMPUValues() {
-  SensorData.AccX = SensorData.AccX / 16384.0;
-  SensorData.AccY = SensorData.AccY / 16384.0;
-  SensorData.AccZ = SensorData.AccZ / 16384.0;
-  SensorData.GyroX = SensorData.GyroX / 131.0;
-  SensorData.GyroY = SensorData.GyroY / 131.0;
-  SensorData.GyroZ = SensorData.GyroZ / 131.0;
+  SensorData.AccX = SensorData.AccX / 16384.0;  // Callibrates raw x-axis acceleration data
+  SensorData.AccY = SensorData.AccY / 16384.0;  // Callibrates raw y-axis acceleration data
+  SensorData.AccZ = SensorData.AccZ / 16384.0;  // Callibrates raw z-axis acceleration data
+  SensorData.GyroX = SensorData.GyroX / 131.0;  // Callibrates raw x-axis gyroscope data
+  SensorData.GyroY = SensorData.GyroY / 131.0;  // Callibrates raw y-axis gyroscope data
+  SensorData.GyroZ = SensorData.GyroZ / 131.0;  // Callibrates raw z-axis gyroscope data
 }
 
 void UpdateMPUSensorData() {
   CallibrateMPUValues();
   if (!digitalRead(HAND)) {
     HandSensorData = SensorData;
-    //Serial.print("Hand:");
+    Serial.print("Hand:");
   } else if (!digitalRead(FOREARM)) {
     ForearmSensorData = SensorData;
-    //Serial.print("Forearm:");
+    Serial.print("Forearm:");
   } else if (!digitalRead(BACK)) {
     BackSensorData = SensorData;
-    //Serial.print("Back:");
+    Serial.print("Back:");
   }
 }
 
@@ -114,8 +114,8 @@ void ExecuteSensor(int value, SensorDataStructure sds) {
   digitalWrite(value, LOW);  // Activates sensor
   ReadMPUValues();
   UpdateMPUSensorData();
-  //PrintFormattedMPUValues(sds);
-  PrintMPUValues(sds);
+  PrintFormattedMPUValues(sds);
+  // PrintMPUValues(sds);
 }
 
 void ExecuteAllSensors() {
@@ -141,9 +141,9 @@ void PrintMPUValues(SensorDataStructure SDS) {
 }
 
 void ReadCurrent() {
-  rawCurrentReading = analogRead(CurrentPort);   // Read sensor value from INA169
+  rawCurrentReading = analogRead(CurrentPort);                    // Read sensor value from INA169
   scaledCurrentReading = (rawCurrentReading * REFVOLTAGE) / 1023; // Scale the value to supply voltage that is 5V
-  PowerData.Current = (scaledCurrentReading) / (RS * 10); // Is = (Vout x 1k) / (RS x RL)
+  PowerData.Current = (scaledCurrentReading) / (RS * 10);         // Is = (Vout x 1k) / (RS x RL)
 }
 
 void ReadVoltage() {
@@ -166,7 +166,7 @@ void CalculatePowerData() {
   ReadVoltage();
   ReadPower();
   ReadEnergy();
-  //PrintPowerValues(PowerData);
+  PrintPowerValues(PowerData);
 }
 
 void PrintPowerValues(PowerDataStructure PDS) {
@@ -184,9 +184,10 @@ void PrintCounterAndTime() {
 }
 
 void loop() {
-  PrintCounterAndTime();
+  //PrintCounterAndTime();
   CalculatePowerData();
   ExecuteAllSensors();
   Serial.println();
-  delay(4);
+  // delay(4);
+  delay(100);
 }
